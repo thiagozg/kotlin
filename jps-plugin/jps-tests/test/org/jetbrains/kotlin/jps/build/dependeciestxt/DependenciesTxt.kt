@@ -19,6 +19,9 @@ import org.jetbrains.kotlin.jps.build.dependeciestxt.generated.DependenciesTxtLe
 import org.jetbrains.kotlin.jps.build.dependeciestxt.generated.DependenciesTxtParser
 import org.jetbrains.kotlin.jps.build.dependeciestxt.generated.DependenciesTxtParser.*
 import java.io.File
+import kotlin.reflect.KMutableProperty1
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.memberProperties
 
 /**
  * Dependencies description file.
@@ -26,11 +29,17 @@ import java.io.File
  */
 data class DependenciesTxt(
     val fileName: String,
-    val modules: List<Module>, val dependencies: List<Dependency>
+    val modules: List<Module>,
+    val dependencies: List<Dependency>
 ) {
     override fun toString() = fileName
 
     data class Module(val name: String) {
+        var index: Int = -1
+
+        val indexedName
+            get() = "${index/10}${index%10}_$name"
+
         /**
          * Facet should not be created for old tests
          */
@@ -50,9 +59,24 @@ data class DependenciesTxt(
         val expectedBy
             get() = dependencies.filter { it.expectedBy }
 
-        val generateEditingTests: Boolean
-            get() = false
+        @Flag
+        var edit: Boolean = false
+
+        @Flag
+        var editJvm: Boolean = false
+
+        @Flag
+        var editExpectActual: Boolean = false
+
+        companion object {
+            val flags: Map<String, KMutableProperty1<Module, Boolean>> = Module::class.memberProperties
+                .filter { it.findAnnotation<Flag>() != null }
+                .filterIsInstance<KMutableProperty1<Module, Boolean>>()
+                .associateBy { it.name }
+        }
     }
+
+    annotation class Flag
 
     data class Dependency(
         val from: Module,
@@ -61,6 +85,9 @@ data class DependenciesTxt(
         val expectedBy: Boolean,
         val exported: Boolean
     ) {
+        val effectivelyExported
+            get() = expectedBy || exported
+
         init {
             from.dependencies.add(this)
             to.usages.add(this)
@@ -79,11 +106,13 @@ class DependenciesTxtBuilder {
         var defined: Boolean = false
         var actual: DependenciesTxt.Module = DependenciesTxt.Module(name)
 
-        fun build(): DependenciesTxt.Module {
+        fun build(index: Int): DependenciesTxt.Module {
             val result = actual
+            result.index = index
             val kotlinFacetSettings = result.kotlinFacetSettings
             if (kotlinFacetSettings != null) {
-                kotlinFacetSettings.implementedModuleNames = result.dependencies.filter { it.expectedBy }.map { it.to.name }
+                kotlinFacetSettings.implementedModuleNames =
+                        result.dependencies.filter { it.expectedBy }.map { it.to.name }
             }
             return result
         }
@@ -116,11 +145,11 @@ class DependenciesTxtBuilder {
             }
         }
 
-        // dependencies build is required for module.build() (module.dependencies will be filled)
+        // module.build() requires built dependencies
         val dependencies = dependencies.map { it.build() }
         return DependenciesTxt(
             fileTitle,
-            modules.values.map { it.build() },
+            modules.values.mapIndexed { index, moduleRef -> moduleRef.build(index) },
             dependencies
         )
     }
@@ -154,7 +183,11 @@ class DependenciesTxtBuilder {
                     "common" -> kotlinFacetSettings.compilerArguments = K2MetadataCompilerArguments()
                     "jvm" -> kotlinFacetSettings.compilerArguments = K2JVMCompilerArguments()
                     "js" -> kotlinFacetSettings.compilerArguments = K2JSCompilerArguments()
-                    else -> error("Unknown module flag `$key`")
+                    else -> {
+                        val flagProperty = DependenciesTxt.Module.flags[key]
+                        if (flagProperty != null) flagProperty.set(module, true)
+                        else error("Unknown module flag `$key`")
+                    }
                 }
             } else error("Unknown module property `$key`")
         }

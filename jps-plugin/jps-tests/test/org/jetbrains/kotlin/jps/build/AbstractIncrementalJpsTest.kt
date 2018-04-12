@@ -40,7 +40,6 @@ import org.jetbrains.jps.cmdline.ProjectDescriptor
 import org.jetbrains.jps.incremental.*
 import org.jetbrains.jps.incremental.messages.BuildMessage
 import org.jetbrains.jps.model.JpsModuleRootModificationUtil
-import org.jetbrains.jps.model.java.JpsJavaDependencyScope
 import org.jetbrains.jps.model.java.JpsJavaExtensionService
 import org.jetbrains.jps.util.JpsPathUtil
 import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
@@ -54,6 +53,7 @@ import org.jetbrains.kotlin.jps.build.dependeciestxt.DependenciesTxtBuilder
 import org.jetbrains.kotlin.jps.incremental.getKotlinCache
 import org.jetbrains.kotlin.jps.incremental.withLookupStorage
 import org.jetbrains.kotlin.jps.model.JpsKotlinFacetModuleExtension
+import org.jetbrains.kotlin.jps.platforms.kotlinBuildTargets
 import org.jetbrains.kotlin.test.KotlinTestUtils
 import org.jetbrains.kotlin.utils.Printer
 import java.io.ByteArrayInputStream
@@ -84,6 +84,7 @@ abstract class AbstractIncrementalJpsTest(
     // is used to compare lookup dumps in a human readable way (lookup symbols are hashed in an actual lookup storage)
     protected lateinit var lookupsDuringTest: MutableSet<LookupSymbol>
     private var isICEnabledBackup: Boolean = false
+    private var isJSICEnabledBackup: Boolean = false
 
     protected var mapWorkingToOriginalFile: MutableMap<File, File> = hashMapOf()
 
@@ -120,7 +121,10 @@ abstract class AbstractIncrementalJpsTest(
         super.setUp()
         lookupsDuringTest = hashSetOf()
         isICEnabledBackup = IncrementalCompilation.isEnabled()
+        isJSICEnabledBackup = IncrementalCompilation.isEnabledForJs()
+
         IncrementalCompilation.setIsEnabled(true)
+        IncrementalCompilation.setIsEnabledForJs(true)
 
         if (DEBUG_LOGGING_ENABLED) {
             enableDebugLogging()
@@ -134,6 +138,7 @@ abstract class AbstractIncrementalJpsTest(
         (AbstractIncrementalJpsTest::systemPropertiesBackup).javaField!![this] = null
         lookupsDuringTest.clear()
         IncrementalCompilation.setIsEnabled(isICEnabledBackup)
+        IncrementalCompilation.setIsEnabledForJs(isJSICEnabledBackup)
         super.tearDown()
     }
 
@@ -143,7 +148,7 @@ abstract class AbstractIncrementalJpsTest(
     private val mockConstantSearch: Callbacks.ConstantAffectionResolver?
         get() = MockJavaConstantSearch(workDir)
 
-    private fun build(scope: CompileScopeTestBuilder = CompileScopeTestBuilder.make().allModules()): MakeResult {
+    private fun build(scope: CompileScopeTestBuilder = CompileScopeTestBuilder.make().allModules(), name: String? = null): MakeResult {
         val workDirPath = FileUtil.toSystemIndependentName(workDir.absolutePath)
 
         val logger = MyLogger(workDirPath)
@@ -153,12 +158,24 @@ abstract class AbstractIncrementalJpsTest(
         projectDescriptor.project.setTestingContext(TestingContext(lookupTracker, logger))
 
         try {
-            val builder = IncProjectBuilder(projectDescriptor, BuilderRegistry.getInstance(), myBuildParams, CanceledStatus.NULL, mockConstantSearch, true)
+            val builder = IncProjectBuilder(
+                projectDescriptor,
+                BuilderRegistry.getInstance(),
+                myBuildParams,
+                CanceledStatus.NULL,
+                mockConstantSearch,
+                true
+            )
             val buildResult = BuildResult()
             builder.addMessageHandler(buildResult)
-            builder.build(scope.build(), false)
+
+            val finalScope = scope.build()
+            builder.build(finalScope, false)
 
             lookupTracker.lookups.mapTo(lookupsDuringTest) { LookupSymbol(it.name, it.scopeFqName) }
+
+            // for getting kotlin platform only
+            val dummyCompileContext = CompileContextImpl.createContextForTests(finalScope, projectDescriptor)
 
             if (!buildResult.isSuccessful) {
                 val errorMessages =
@@ -167,10 +184,20 @@ abstract class AbstractIncrementalJpsTest(
                                 .map { it.messageText }
                                 .map { it.replace("^.+:\\d+:\\s+".toRegex(), "").trim() }
                                 .joinToString("\n")
-                return MakeResult(logger.log + "$COMPILATION_FAILED\n" + errorMessages + "\n", true, null)
+                return MakeResult(
+                    logger.log + "$COMPILATION_FAILED\n" + errorMessages + "\n",
+                    true,
+                    null,
+                    name
+                )
             }
             else {
-                return MakeResult(logger.log, false, createMappingsDump(projectDescriptor))
+                return MakeResult(
+                    logger.log,
+                    false,
+                    createMappingsDump(projectDescriptor, dummyCompileContext),
+                    name
+                )
             }
         }
         finally {
@@ -180,7 +207,7 @@ abstract class AbstractIncrementalJpsTest(
     }
 
     protected fun initialMake(): MakeResult {
-        val makeResult = build()
+        val makeResult = build(name = "initial")
 
         val initBuildLogFile = File(testDataDir, "init-build.log")
         if (initBuildLogFile.exists()) {
@@ -193,8 +220,8 @@ abstract class AbstractIncrementalJpsTest(
         return makeResult
     }
 
-    private fun make(): MakeResult {
-        return build()
+    private fun make(name: String?): MakeResult {
+        return build(name = name)
     }
 
     private fun rebuild(): MakeResult {
@@ -217,7 +244,7 @@ abstract class AbstractIncrementalJpsTest(
             assertFalse(outDir.exists())
         }
         else {
-            assertEqualDirectories(outDir, outAfterMake, makeOverallResult.makeFailed)
+            assertEqualDirectories(outAfterMake, outDir, makeOverallResult.makeFailed)
         }
 
         if (!makeOverallResult.makeFailed) {
@@ -249,7 +276,11 @@ abstract class AbstractIncrementalJpsTest(
             buildString {
                 incrementalMakeResults.forEachIndexed { i, makeResult ->
                     if (i > 0) append("\n")
-                    append("================ Step #${i + 1} =================\n\n")
+                    if (makeResult.name != null) {
+                        append("================ Step #${i + 1} ${makeResult.name} =================\n\n")
+                    } else {
+                        append("================ Step #${i + 1} =================\n\n")
+                    }
                     append(makeResult.log)
                 }
             }
@@ -293,17 +324,23 @@ abstract class AbstractIncrementalJpsTest(
         } else throw IllegalStateException("No build log file in $testDataDir")
     }
 
-    private fun createMappingsDump(project: ProjectDescriptor) =
-            createKotlinIncrementalCacheDump(project) + "\n\n\n" +
+    private fun createMappingsDump(
+        project: ProjectDescriptor,
+        dummyCompileContext: CompileContext
+    ) =
+            createKotlinIncrementalCacheDump(project, dummyCompileContext) + "\n\n\n" +
             createLookupCacheDump(project) + "\n\n\n" +
             createCommonMappingsDump(project) + "\n\n\n" +
             createJavaMappingsDump(project)
 
-    private fun createKotlinIncrementalCacheDump(project: ProjectDescriptor): String {
+    private fun createKotlinIncrementalCacheDump(
+        project: ProjectDescriptor,
+        dummyCompileContext: CompileContext
+    ): String {
         return buildString {
             for (target in project.allModuleTargets.sortedBy { it.presentableName }) {
                 append("<target $target>\n")
-                append(project.dataManager.getKotlinCache(target).dump())
+                append(project.dataManager.getKotlinCache(dummyCompileContext.kotlinBuildTargets[target]!!).dump())
                 append("</target $target>\n\n\n")
             }
         }
@@ -361,23 +398,32 @@ abstract class AbstractIncrementalJpsTest(
         return byteArrayOutputStream.toString()
     }
 
-    protected data class MakeResult(val log: String, val makeFailed: Boolean, val mappingsDump: String?)
+    protected data class MakeResult(
+        val log: String,
+        val makeFailed: Boolean,
+        val mappingsDump: String?,
+        val name: String?
+    )
 
     private fun performModificationsAndMake(moduleNames: Set<String>?): List<MakeResult> {
         val results = arrayListOf<MakeResult>()
         val modifications = getModificationsToPerform(testDataDir, moduleNames, allowNoFilesWithSuffixInTestData, TouchPolicy.TIMESTAMP)
 
-        for (step in modifications) {
+        val stepsTxt = File(testDataDir, "steps.txt")
+        val modificationNames = if (stepsTxt.exists()) stepsTxt.readLines() else null
+
+        modifications.forEachIndexed { index, step ->
             step.forEach { it.perform(workDir, mapWorkingToOriginalFile) }
             performAdditionalModifications(step)
             if (moduleNames == null) {
                 preProcessSources(File(workDir, "src"))
-            }
-            else {
+            } else {
                 moduleNames.forEach { preProcessSources(File(workDir, "$it/src")) }
             }
 
-            results.add(make())
+            val name = modificationNames?.getOrNull(index)
+            val makeResult = make(name)
+            results.add(makeResult)
         }
         return results
     }
@@ -385,17 +431,27 @@ abstract class AbstractIncrementalJpsTest(
     protected open fun performAdditionalModifications(modifications: List<Modification>) {
     }
 
+    protected open fun prepareModuleSources(module: DependenciesTxt.Module? = null) {
+        if (module != null) {
+            prepareModuleSourcesByName("${module.name}/src", "${module.name}_")
+        } else {
+            prepareModuleSourcesByName("src", "")
+        }
+    }
+
+    protected fun prepareIndexedModuleSources(module: DependenciesTxt.Module) {
+        prepareModuleSourcesByName("${module.name}/src", "${module.indexedName}_")
+    }
+
+    private fun prepareModuleSourcesByName(sourceDirName: String, filePrefix: String) {
+        val sourceDestinationDir = File(workDir, sourceDirName)
+        val sourcesMapping = copyTestSources(testDataDir, sourceDestinationDir, filePrefix)
+        mapWorkingToOriginalFile.putAll(sourcesMapping)
+        preProcessSources(sourceDestinationDir)
+    }
+
     // null means one module
     protected fun configureModules(): Set<String>? {
-        fun prepareModuleSources(moduleName: String?) {
-            val sourceDirName = moduleName?.let { "$it/src" } ?: "src"
-            val filePrefix = moduleName?.let { "${it}_" } ?: ""
-            val sourceDestinationDir = File(workDir, sourceDirName)
-            val sourcesMapping = copyTestSources(testDataDir, sourceDestinationDir, filePrefix)
-            mapWorkingToOriginalFile.putAll(sourcesMapping)
-            preProcessSources(sourceDestinationDir)
-        }
-
         val outputUrl = JpsPathUtil.pathToUrl(getAbsolutePath("out"))
         JpsJavaExtensionService.getInstance().getOrCreateProjectExtension(myProject).outputUrl = outputUrl
 
@@ -406,7 +462,7 @@ abstract class AbstractIncrementalJpsTest(
         val moduleNames: Set<String>?
         if (dependenciesTxt == null) {
             addModule("module", arrayOf(getAbsolutePath("src")), null, null, jdk)
-            prepareModuleSources(moduleName = null)
+            prepareModuleSources(module = null)
             moduleNames = null
         } else {
             dependenciesTxt.modules.forEach {
@@ -422,7 +478,9 @@ abstract class AbstractIncrementalJpsTest(
                 if (kotlinFacetSettings != null) {
                     val compilerArguments = kotlinFacetSettings.compilerArguments
                     if (compilerArguments is K2MetadataCompilerArguments) {
-                        compilerArguments.destination = outputUrl
+                        val out = getAbsolutePath("${it.name}/out")
+                        File(out).mkdirs()
+                        compilerArguments.destination = out
                     }
 
                     module.container.setChild(
@@ -444,7 +502,7 @@ abstract class AbstractIncrementalJpsTest(
             }
 
             dependenciesTxt.modules.forEach {
-                prepareModuleSources(it.name)
+                prepareModuleSources(it)
             }
 
             moduleNames = dependenciesTxt.modules.map { it.name }.toSet()
