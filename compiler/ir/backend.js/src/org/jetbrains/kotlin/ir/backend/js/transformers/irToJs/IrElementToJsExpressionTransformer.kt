@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
 class IrElementToJsExpressionTransformer : BaseIrElementToJsNodeTransformer<JsExpression, JsGenerationContext> {
 
     override fun visitVararg(expression: IrVararg, context: JsGenerationContext): JsExpression {
+        // TODO: perform the dark magic below in the separated lowering
         if (expression.elements.size == 1) {
             val element = expression.elements[0]
             if (element is IrSpreadElement) {
@@ -57,12 +58,12 @@ class IrElementToJsExpressionTransformer : BaseIrElementToJsNodeTransformer<JsEx
             }
         }
 
-        val tail = if (arrayLiteralElements.isNotEmpty()) listOf(JsArrayLiteral(arrayLiteralElements)) else emptyList()
-
         return qualifier?.let {
-            concatArguments.addAll(tail)
+            if (arrayLiteralElements.isNotEmpty()) {
+                concatArguments.add(JsArrayLiteral(arrayLiteralElements))
+            }
             return JsInvocation(it, concatArguments)
-        } ?: tail.first()
+        } ?: JsArrayLiteral(arrayLiteralElements)
     }
 
     override fun visitExpressionBody(body: IrExpressionBody, context: JsGenerationContext): JsExpression =
