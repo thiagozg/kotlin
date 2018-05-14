@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.backend.js.utils.isAny
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrConstructor
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.declarations.IrVariable
 import org.jetbrains.kotlin.ir.symbols.impl.IrClassSymbolImpl
 import org.jetbrains.kotlin.ir.util.isReal
 import org.jetbrains.kotlin.ir.util.resolveFakeOverride
@@ -33,12 +34,12 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
     fun generate(): JsStatement {
 
         maybeGeneratePrimaryConstructor()
-        val transformer = IrFunctionToJsTransformer()
+        val transformer = IrDeclarationToJsTransformer()
 
         for (declaration in irClass.declarations) {
             when (declaration) {
                 is IrConstructor -> {
-                    classBlock.statements += declaration.accept(transformer, context).makeStmt()
+                    classBlock.statements += declaration.accept(transformer, context)
                     classBlock.statements += generateInheritanceCode()
                 }
                 is IrSimpleFunction -> {
@@ -46,6 +47,9 @@ class JsClassGenerator(private val irClass: IrClass, val context: JsGenerationCo
                 }
                 is IrClass -> {
                     classBlock.statements += JsClassGenerator(declaration, context).generate()
+                }
+                is IrVariable -> {
+                    classBlock.statements += declaration.accept(transformer, context)
                 }
                 else -> {
                 }

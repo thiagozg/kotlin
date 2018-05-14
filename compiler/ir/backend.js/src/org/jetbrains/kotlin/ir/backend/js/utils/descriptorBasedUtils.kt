@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.ir.backend.js.utils
 
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
+import org.jetbrains.kotlin.descriptors.ClassifierDescriptor
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.descriptors.ModuleDescriptor
 import org.jetbrains.kotlin.incremental.components.NoLookupLocation
@@ -24,4 +25,12 @@ fun ModuleDescriptor.getFunctions(fqName: FqName): List<FunctionDescriptor> {
 
 fun ModuleDescriptor.getFunctions(packageFqName: FqName, name: Name): List<FunctionDescriptor> {
     return getPackage(packageFqName).memberScope.getContributedFunctions(name, NoLookupLocation.FROM_BACKEND).toList()
+}
+
+fun ModuleDescriptor.getClassifier(fqName: FqName): ClassifierDescriptor? {
+    return getClassifier(fqName.parent(), fqName.shortName())
+}
+
+fun ModuleDescriptor.getClassifier(packageFqName: FqName, name: Name): ClassifierDescriptor? {
+    return getPackage(packageFqName).memberScope.getContributedClassifier(name, NoLookupLocation.FROM_BACKEND)
 }

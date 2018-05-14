@@ -83,6 +83,11 @@ object Namer {
     val GETTER_PREFIX = "get_"
     val SETTER_PREFIX = "set_"
 
+    val KCALLABLE_NAME = "callableName"
+    val KPROPERTY_GET = "get"
+    val KPROPERTY_SET = "set"
+    val KCALLABLE_CACHE_SUFFIX = "\$cache"
+
     val SETTER_ARGUMENT = "\$setValue"
 
     val THIS_SPECIAL_NAME = "<this>"
