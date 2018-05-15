@@ -127,6 +127,7 @@ class BlockDecomposerLowering(val context: JsIrBackendContext) : FunctionLowerin
                 expressionResult.statements += IrReturnImpl(
                     expression.startOffset,
                     expression.endOffset,
+                    expression.type,
                     expression.returnTargetSymbol,
                     returnValue
                 )
