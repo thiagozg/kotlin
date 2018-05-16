@@ -17,6 +17,8 @@
 package org.jetbrains.kotlin.asJava
 
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.application.runWriteAction
+import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProviderImpl
 import com.intellij.psi.*
 import com.intellij.testFramework.LightProjectDescriptor
@@ -132,6 +134,43 @@ class KtLightAnnotationTest : KotlinLightCodeInsightFixtureTestCase() {
         val annotationAttributeVal = annotations.first().findAttributeValue("value") as PsiLiteral
         assertTextAndRange("Constants.MY_CONSTANT", annotationAttributeVal)
         TestCase.assertEquals("67", annotationAttributeVal.value)
+    }
+
+
+    fun testLiteralReplace() {
+        myFixture.addClass(
+            """
+            public @interface StringAnnotation {
+                  String value();
+            }
+        """.trimIndent()
+        )
+
+        myFixture.configureByText(
+            "AnnotatedClass.kt", """
+            @StringAnnotation("oldValue")
+            open class AnnotatedClass
+        """.trimIndent()
+        )
+        myFixture.testHighlighting("AnnotatedClass.kt")
+
+        val annotations = myFixture.findClass("AnnotatedClass").expectAnnotations(1)
+        val annotationAttributeVal = annotations.first().findAttributeValue("value") as PsiLiteral
+        assertTextAndRange("\"oldValue\"", annotationAttributeVal)
+        TestCase.assertEquals("oldValue", annotationAttributeVal.value)
+        runWriteAction {
+            CommandProcessor.getInstance().runUndoTransparentAction {
+                annotationAttributeVal.replace(
+                    JavaPsiFacade.getElementFactory(project).createExpressionFromText("\"newValue\"", annotationAttributeVal)
+                )
+            }
+        }
+        myFixture.checkResult(
+            """
+            @StringAnnotation("newValue")
+            open class AnnotatedClass
+        """.trimIndent()
+        )
     }
 
     fun testAnnotationsInAnnotationsArrayDeclarations() {

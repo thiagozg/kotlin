@@ -5,12 +5,14 @@
 
 package org.jetbrains.kotlin.asJava.elements
 
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.LanguageConstantExpressionEvaluator
 import com.intellij.psi.impl.ResolveScopeManager
 import com.intellij.psi.impl.light.LightIdentifier
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtExpression
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtValueArgument
 
 class KtLightPsiArrayInitializerMemberValue(
@@ -38,6 +40,12 @@ class KtLightPsiLiteral(
     override fun getParent(): PsiElement = lightParent
 
     override fun isPhysical(): Boolean = false
+
+    override fun replace(newElement: PsiElement): PsiElement {
+        val value = (newElement as? PsiLiteral)?.value as? String ?: return this
+        kotlinOrigin.replace(KtPsiFactory(this).createExpression("\"${StringUtil.escapeStringCharacters(value)}\""))
+        return this
+    }
 }
 
 class KtLightPsiNameValuePair private constructor(
