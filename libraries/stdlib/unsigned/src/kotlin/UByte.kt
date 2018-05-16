@@ -105,6 +105,15 @@ public inline class UByte internal constructor(private val data: Byte) : Compara
     /** Creates a range from this value to the specified [other] value. */
     public operator fun rangeTo(other: UByte): UIntRange = UIntRange(this.toUInt(), other.toUInt())
 
+    /** Performs a bitwise AND operation between the two values. */
+    public infix fun and(other: UByte): UByte = UByte(this.data and other.data)
+    /** Performs a bitwise OR operation between the two values. */
+    public infix fun or(other: UByte): UByte = UByte(this.data or other.data)
+    /** Performs a bitwise XOR operation between the two values. */
+    public infix fun xor(other: UByte): UByte = UByte(this.data xor other.data)
+    /** Inverts the bits in this value. */
+    public fun inv(): UByte = UByte(data.inv())
+
     public fun toByte(): Byte = data
     public fun toShort(): Short = data.toShort() and 0xFF
     public fun toInt(): Int = data.toInt() and 0xFF

@@ -105,6 +105,15 @@ public inline class UShort internal constructor(private val data: Short) : Compa
     /** Creates a range from this value to the specified [other] value. */
     public operator fun rangeTo(other: UShort): UIntRange = UIntRange(this.toUInt(), other.toUInt())
 
+    /** Performs a bitwise AND operation between the two values. */
+    public infix fun and(other: UShort): UShort = UShort(this.data and other.data)
+    /** Performs a bitwise OR operation between the two values. */
+    public infix fun or(other: UShort): UShort = UShort(this.data or other.data)
+    /** Performs a bitwise XOR operation between the two values. */
+    public infix fun xor(other: UShort): UShort = UShort(this.data xor other.data)
+    /** Inverts the bits in this value. */
+    public fun inv(): UShort = UShort(data.inv())
+
     public fun toByte(): Byte = data.toByte()
     public fun toShort(): Short = data
     public fun toInt(): Int = data.toInt() and 0xFFFF

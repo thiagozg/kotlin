@@ -65,9 +65,8 @@ class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIns
         if (type == UnsignedType.UINT || type == UnsignedType.ULONG) {
             generateBitShiftOperators()
         }
-        if (type == UnsignedType.UINT || type == UnsignedType.ULONG /* || kind == PrimitiveType.BYTE || kind == PrimitiveType.SHORT */) {
-            generateBitwiseOperators()
-        }
+
+        generateBitwiseOperators()
 
         generateMemberConversions()
 
