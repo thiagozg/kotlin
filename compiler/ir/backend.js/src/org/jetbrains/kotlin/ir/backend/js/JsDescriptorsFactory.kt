@@ -18,21 +18,19 @@ package org.jetbrains.kotlin.backend.js
 
 import org.jetbrains.kotlin.backend.common.descriptors.DescriptorsFactory
 import org.jetbrains.kotlin.builtins.CompanionObjectMapping.isMappedIntrinsicCompanionObject
-import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.descriptors.impl.ClassConstructorDescriptorImpl
 import org.jetbrains.kotlin.descriptors.impl.PropertyDescriptorImpl
-import org.jetbrains.kotlin.descriptors.impl.ValueParameterDescriptorImpl
+import org.jetbrains.kotlin.ir.backend.js.utils.Namer
+import org.jetbrains.kotlin.ir.backend.js.utils.createValueParameter
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrConstructorSymbolImpl
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import java.util.*
 
-class JsDescriptorsFactory(
-    private val builtIns: KotlinBuiltIns
-) : DescriptorsFactory {
+class JsDescriptorsFactory : DescriptorsFactory {
     private val singletonFieldDescriptors = HashMap<ClassDescriptor, PropertyDescriptor>()
     private val outerThisDescriptors = HashMap<ClassDescriptor, PropertyDescriptor>()
     private val innerClassConstructors = HashMap<ClassConstructorDescriptor, IrConstructorSymbol>()
@@ -88,19 +86,7 @@ class JsDescriptorsFactory(
             classDescriptor, oldDescriptor.annotations, oldDescriptor.isPrimary, oldDescriptor.source
         )
 
-        val outerThisValueParameter = ValueParameterDescriptorImpl(
-            newDescriptor,
-            null,
-            0,
-            Annotations.EMPTY,
-            Name.identifier("\$outer"),
-            outerThisType,
-            false,
-            false,
-            false,
-            null,
-            SourceElement.NO_SOURCE
-        )
+        val outerThisValueParameter = createValueParameter(newDescriptor, 0, Namer.OUTER_NAME, outerThisType)
 
         val newValueParameters =
             listOf(outerThisValueParameter) +

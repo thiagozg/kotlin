@@ -37,7 +37,7 @@ object Namer {
     val SLICE_FUNCTION = "slice"
     val CONCAT_FUNCTION = "concat"
 
-    val OUTER_FIELD_NAME = "\$outer"
+    val OUTER_NAME = "\$outer"
 
     val DELEGATE = "\$delegate"
 
@@ -83,6 +83,7 @@ object Namer {
     val GETTER_PREFIX = "get_"
     val SETTER_PREFIX = "set_"
 
+    val KCALLABLE_GET_NAME = "<get-name>"
     val KCALLABLE_NAME = "callableName"
     val KPROPERTY_GET = "get"
     val KPROPERTY_SET = "set"

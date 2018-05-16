@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.descriptors.annotations.Annotations
 import org.jetbrains.kotlin.descriptors.impl.SimpleFunctionDescriptorImpl
 import org.jetbrains.kotlin.descriptors.impl.TypeParameterDescriptorImpl
-import org.jetbrains.kotlin.descriptors.impl.ValueParameterDescriptorImpl
+import org.jetbrains.kotlin.ir.backend.js.utils.createValueParameter
 import org.jetbrains.kotlin.ir.backend.js.utils.getFunctions
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.descriptors.IrBuiltIns
@@ -133,57 +133,9 @@ class JsIntrinsics(private val module: ModuleDescriptor, private val irBuiltIns:
             SourceElement.NO_SOURCE
         ).apply {
 
-            val receiver = ValueParameterDescriptorImpl(
-                this,
-                null,
-                0,
-                Annotations.EMPTY,
-                Name.identifier("receiver"),
-                irBuiltIns.any,
-                false,
-                false,
-                false,
-                null,
-                SourceElement.NO_SOURCE
-            )
-
-            val propertyName = ValueParameterDescriptorImpl(
-                this,
-                null,
-                1,
-                Annotations.EMPTY,
-                Name.identifier("fieldName"),
-                irBuiltIns.string,
-                false,
-                false,
-                false,
-                null,
-                SourceElement.NO_SOURCE
-            )
-
-            val propertyValue = ValueParameterDescriptorImpl(
-                this,
-                null,
-                2,
-                Annotations.EMPTY,
-                Name.identifier("fieldValue"),
-                irBuiltIns.any,
-                false,
-                false,
-                false,
-                null,
-                SourceElement.NO_SOURCE
-            )
-
-            initialize(
-                null,
-                null,
-                emptyList(),
-                listOf(receiver, propertyName, propertyValue),
-                returnType,
-                Modality.FINAL,
-                Visibilities.PUBLIC
-            )
+            val parameterDescriptors = listOf("receiver", "fieldName", "fieldValue")
+                .mapIndexed { i, name -> createValueParameter(this, i, name, irBuiltIns.any) }
+            initialize(null, null, emptyList(), parameterDescriptors, returnType, Modality.FINAL, Visibilities.PUBLIC)
         }
 
         return stubBuilder.generateFunctionStub(desc)

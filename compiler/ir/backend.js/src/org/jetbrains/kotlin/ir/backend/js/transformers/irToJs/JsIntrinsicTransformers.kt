@@ -101,14 +101,14 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
             add(intrinsics.jsName) { call: IrCall, context ->
                 val args = translateCallArguments(call, context)
                 val receiver = args[0]
-                JsNameRef("callableName", receiver)
+                JsNameRef(Namer.KCALLABLE_NAME, receiver)
             }
 
             add(intrinsics.jsPropertyGet) { call: IrCall, context ->
                 val args = translateCallArguments(call, context)
                 val reference = args[0]
                 val receiver = args[1]
-                JsInvocation(JsNameRef("get", reference), listOf(receiver))
+                JsInvocation(JsNameRef(Namer.KPROPERTY_GET, reference), listOf(receiver))
             }
 
             add(intrinsics.jsPropertySet) { call: IrCall, context ->
@@ -116,7 +116,7 @@ class JsIntrinsicTransformers(backendContext: JsIrBackendContext) {
                 val reference = args[0]
                 val receiver = args[1]
                 val value = args[2]
-                JsInvocation(JsNameRef("set", reference), listOf(receiver, value))
+                JsInvocation(JsNameRef(Namer.KPROPERTY_SET, reference), listOf(receiver, value))
             }
         }
     }
