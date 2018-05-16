@@ -21,6 +21,7 @@ import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProviderImpl
 import com.intellij.psi.*
+import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.LightProjectDescriptor
 import junit.framework.TestCase
 import org.jetbrains.kotlin.asJava.elements.KtLightAnnotationForSourceEntry
@@ -80,8 +81,9 @@ class KtLightAnnotationTest : KotlinLightCodeInsightFixtureTestCase() {
 
         val annotation = myFixture.findClass("AnnotatedClass").methods.first { it.name == "bar" }.parameterList.parameters.single()
                 .expectAnnotations(2).single { it.qualifiedName == "Qualifier" }
-        val annotationAttributeVal = annotation.findAttributeValue("value") as PsiElement
+        val annotationAttributeVal = annotation.findAttributeValue("value") as PsiExpression
         assertTextRangeAndValue("\"foo\"", "foo", annotationAttributeVal)
+        TestCase.assertEquals(PsiType.getJavaLangString(psiManager, GlobalSearchScope.projectScope(project)), annotationAttributeVal.type)
     }
 
     fun testAnnotationsInAnnotationsDeclarations() {
@@ -134,6 +136,10 @@ class KtLightAnnotationTest : KotlinLightCodeInsightFixtureTestCase() {
         val annotationAttributeVal = annotations.first().findAttributeValue("value") as PsiLiteral
         assertTextAndRange("Constants.MY_CONSTANT", annotationAttributeVal)
         TestCase.assertEquals("67", annotationAttributeVal.value)
+        TestCase.assertEquals(
+            PsiType.getJavaLangString(psiManager, GlobalSearchScope.projectScope(project)),
+            (annotationAttributeVal as PsiExpression).type
+        )
     }
 
 
@@ -319,6 +325,7 @@ class KtLightAnnotationTest : KotlinLightCodeInsightFixtureTestCase() {
             innerAnnotationAttributeVal as PsiAnnotation
             val value = innerAnnotationAttributeVal.findAttributeValue("v").assertInstanceOf<PsiLiteral>()
             assertTextAndRange("1", value)
+            TestCase.assertEquals(PsiType.INT, value.assertInstanceOf<PsiExpression>().type)
         }
 
 

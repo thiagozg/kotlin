@@ -8,12 +8,15 @@ package org.jetbrains.kotlin.asJava.elements
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.*
 import com.intellij.psi.impl.LanguageConstantExpressionEvaluator
-import com.intellij.psi.impl.ResolveScopeManager
 import com.intellij.psi.impl.light.LightIdentifier
+import com.intellij.psi.search.GlobalSearchScope
+import org.jetbrains.kotlin.asJava.LightClassGenerationSupport
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtValueArgument
+import org.jetbrains.kotlin.resolve.BindingContext
+import org.jetbrains.kotlin.resolve.descriptorUtil.fqNameSafe
 
 class KtLightPsiArrayInitializerMemberValue(
     override val kotlinOrigin: KtElement,
@@ -35,7 +38,23 @@ class KtLightPsiLiteral(
     override fun getValue(): Any? =
         LanguageConstantExpressionEvaluator.INSTANCE.forLanguage(kotlinOrigin.language)?.computeConstantExpression(this, false)
 
-    override fun getType(): PsiType? = PsiType.getJavaLangString(this.manager, ResolveScopeManager.getElementResolveScope(this))
+    override fun getType(): PsiType? {
+        val bindingContext = LightClassGenerationSupport.getInstance(this.project).analyze(kotlinOrigin)
+        val kotlinType = bindingContext[BindingContext.EXPECTED_EXPRESSION_TYPE, kotlinOrigin] ?: return null
+        val typeFqName = kotlinType.constructor.declarationDescriptor?.fqNameSafe?.asString() ?: return null
+        return when (typeFqName) {
+            "kotlin.Int" -> PsiType.INT
+            "kotlin.Long" -> PsiType.LONG
+            "kotlin.Short" -> PsiType.SHORT
+            "kotlin.Boolean" -> PsiType.BOOLEAN
+            "kotlin.Byte" -> PsiType.BYTE
+            "kotlin.Char" -> PsiType.CHAR
+            "kotlin.Double" -> PsiType.DOUBLE
+            "kotlin.Float" -> PsiType.FLOAT
+            "kotlin.String" -> PsiType.getJavaLangString(kotlinOrigin.manager, GlobalSearchScope.projectScope(kotlinOrigin.project))
+            else -> null
+        }
+    }
 
     override fun getParent(): PsiElement = lightParent
 
