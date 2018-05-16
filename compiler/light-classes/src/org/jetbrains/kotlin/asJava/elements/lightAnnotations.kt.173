@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.asJava.classes.lazyPub
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.descriptors.CallableDescriptor
 import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor
+import org.jetbrains.kotlin.descriptors.ClassConstructorDescriptor
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.load.java.descriptors.JavaClassConstructorDescriptor
 import org.jetbrains.kotlin.psi.*
@@ -380,26 +381,14 @@ private fun unwrapCall(callee: KtExpression): KtExpression = when (callee) {
 
 private fun getAnnotationName(callee: KtExpression): String? {
     val callee = unwrapCall(callee)
-
-    if (callee is KtCallExpression) {
         val resultingDescriptor = callee.getResolvedCall()?.resultingDescriptor
-        if (resultingDescriptor is JavaClassConstructorDescriptor && (resultingDescriptor.constructedClass.source.getPsi() as? PsiClass)?.isAnnotationType == true) {
-            return (resultingDescriptor.constructedClass.source.getPsi() as? PsiClass)?.qualifiedName
-        }
+    if (resultingDescriptor is ClassConstructorDescriptor) {
+        val ktClass = resultingDescriptor.constructedClass.source.getPsi() as? KtClass
+        if (ktClass?.isAnnotation() == true) return ktClass.fqName?.toString()
     }
-    callee.nameReference?.references?.forEach {
-        val resolvedElement = it.resolve()
-        when (resolvedElement) {
-            is PsiClass -> if (resolvedElement.isAnnotationType)
-                return resolvedElement.qualifiedName
-            is KtClass -> if (resolvedElement.isAnnotation())
-                return resolvedElement.fqName?.toString()
-            is KtConstructor<*> -> {
-                val containingClassOrObject = resolvedElement.getContainingClassOrObject()
-                if (containingClassOrObject.isAnnotation())
-                    return containingClassOrObject.fqName?.asString()
-            }
-        }
+    if (resultingDescriptor is JavaClassConstructorDescriptor) {
+        val psiClass = resultingDescriptor.constructedClass.source.getPsi() as? PsiClass
+        if (psiClass?.isAnnotationType == true) return psiClass.qualifiedName
     }
     return null
 }
