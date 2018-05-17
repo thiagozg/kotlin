@@ -69,7 +69,9 @@ abstract class AbstractKotlinCompileTool<T : CommonToolArguments>() : AbstractCo
     @PathSensitive(PathSensitivity.RELATIVE)
     override fun getSource() = super.getSource()
 
-    @get:Classpath @get:InputFiles
+    // @Classpath is not used, because it slows down small builds (~ 30% with Gradle 4.4 for KotlinGradlePluginJpsParametrizedIT)
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.ABSOLUTE)
     internal val computedCompilerClasspath: List<File>
         get() = compilerClasspath?.takeIf { it.isNotEmpty() }
                 ?: compilerJarFile?.let {
@@ -123,7 +125,8 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments>() : AbstractKo
         get() = (classpath + additionalClasspath)
                 .filterTo(LinkedHashSet(), File::exists)
 
-    @get:Classpath @get:InputFiles
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.ABSOLUTE)
     internal val pluginClasspath get() = pluginOptions.classpath
 
     private val kotlinExt: KotlinProjectExtension
