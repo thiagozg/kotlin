@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
 import org.jetbrains.kotlin.ir.expressions.impl.*
 import org.jetbrains.kotlin.ir.symbols.IrFunctionSymbol
+import org.jetbrains.kotlin.ir.symbols.IrReturnTargetSymbol
 import org.jetbrains.kotlin.ir.symbols.IrSymbol
 import org.jetbrains.kotlin.ir.util.ExternalDependenciesGenerator
 import org.jetbrains.kotlin.ir.util.SymbolTable
@@ -346,7 +347,7 @@ private class IrUnboundSymbolReplacer(
         }
     }
 
-    private val returnTargetStack = mutableListOf<IrFunctionSymbol>()
+    private val returnTargetStack = mutableListOf<IrReturnTargetSymbol>()
 
     override fun visitFunction(declaration: IrFunction): IrStatement {
         returnTargetStack.push(declaration.symbol)

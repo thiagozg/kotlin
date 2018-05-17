@@ -48,8 +48,12 @@ fun compile(
 
     ExternalDependenciesGenerator(psi2IrContext.symbolTable, psi2IrContext.irBuiltIns).generateUnboundSymbolsAsDependencies(moduleFragment)
 
+    println("Before inlining:")
     println(moduleFragment.dump())
+
     FunctionInlining(context).inline(moduleFragment)
+
+    println("After inlining:")
     println(moduleFragment.dump())
 
     val symbolTable = context.symbolTable
