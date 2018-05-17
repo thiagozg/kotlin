@@ -155,10 +155,6 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments>() : AbstractKo
                 ?: coroutinesFromGradleProperties
                 ?: Coroutines.DEFAULT
 
-    // TODO: consider more reliable approach (see usage)
-    @get:Internal
-    internal var anyClassesCompiled: Boolean = false
-
     @get:Internal
     internal var friendTaskName: String? = null
 
@@ -388,7 +384,6 @@ open class KotlinCompile : AbstractKotlinCompile<K2JVMCompilerArguments>(), Kotl
             cleanupOnError()
             throw e
         }
-        anyClassesCompiled = true
     }
 
     private fun disableMultiModuleICIfNeeded() {
