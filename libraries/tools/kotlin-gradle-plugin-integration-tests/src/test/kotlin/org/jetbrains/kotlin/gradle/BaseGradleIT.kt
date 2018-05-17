@@ -63,11 +63,9 @@ abstract class BaseGradleIT {
     }
 
     companion object {
-        // wrapper version to the number of daemon runs performed
-        private val daemonRunCount = hashMapOf<String, Int>()
+        private val activeDaemonVersions = hashSetOf<String>()
         // gradle wrapper version to wrapper directory
         private val gradleWrappers = hashMapOf<String, File>()
-        private const val MAX_DAEMON_RUNS = 30
         private const val MAX_ACTIVE_GRADLE_PROCESSES = 1
 
         private fun getEnvJDK_18() = System.getenv()["JDK_18"]
@@ -101,19 +99,11 @@ abstract class BaseGradleIT {
             // Even if gradle is run with --no-daemon, we should check,
             // that common active process count does not exceed the threshold,
             // to avoid retaining too much memory (which is critical for CI)
-            val activeDaemonsCount = daemonRunCount.keys.size
+            val activeDaemonsCount = activeDaemonVersions.size
             val nonDaemonCount = if (!withDaemon) 1 else 0
             if (activeDaemonsCount + nonDaemonCount > MAX_ACTIVE_GRADLE_PROCESSES) {
                 println("Too many Gradle active processes (max is $MAX_ACTIVE_GRADLE_PROCESSES). Stopping all daemons")
                 stopAllDaemons(environmentVariables)
-            }
-
-            if (withDaemon) {
-                val timesDaemonUsed = daemonRunCount[version] ?: 0
-                if (timesDaemonUsed >= MAX_DAEMON_RUNS) {
-                    stopDaemon(version, environmentVariables)
-                }
-                daemonRunCount[version] = timesDaemonUsed + 1
             }
 
             return wrapperDir
@@ -138,22 +128,19 @@ abstract class BaseGradleIT {
             println("Stopping gradle daemon v$version")
 
             val wrapperDir = gradleWrappers[version] ?: error("Was asked to stop unknown daemon $version")
-            if (version in daemonRunCount) {
+            if (version in activeDaemonVersions) {
                 val cmd = createGradleCommand(wrapperDir, arrayListOf("-stop"))
                 val result = runProcess(cmd, wrapperDir, environmentVariables)
                 assert(result.isSuccessful) { "Could not stop daemon: $result" }
-                daemonRunCount.remove(version)
+                activeDaemonVersions.remove(version)
             }
         }
 
         private fun stopAllDaemons(environmentVariables: Map<String, String>) {
-            // copy wrapper versions, because stopDaemon modifies daemonRunCount
-            val wrapperVersions = daemonRunCount.keys.toList()
+            // copy wrapper versions, because stopDaemon modifies activeDaemonVersions
+            val wrapperVersions = activeDaemonVersions.toList()
             for (version in wrapperVersions) {
                 stopDaemon(version, environmentVariables)
-            }
-            assert(daemonRunCount.keys.none { it != runnerGradleVersion }) {
-                "Could not stop some daemons ${(daemonRunCount.keys - runnerGradleVersion).joinToString()}"
             }
         }
     }
