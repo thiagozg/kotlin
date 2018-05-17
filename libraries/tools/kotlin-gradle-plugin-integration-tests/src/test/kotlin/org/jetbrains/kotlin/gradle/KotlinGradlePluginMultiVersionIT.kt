@@ -73,10 +73,6 @@ class KotlinGradlePluginMultiVersionIT : BaseMultiGradleVersionIT() {
     @Test
     fun testJavaIcCompatibility() {
         val project = Project("kotlinJavaProject", gradleVersion)
-
-        val expectIncrementalCompilation = project.testGradleVersionAtLeast("2.14")
-        val expectVerboseIncrementalLogs = project.testGradleVersionBelow("3.4")
-
         project.setupWorkingDir()
 
         val buildScript = File(project.projectDir, "build.gradle")
@@ -90,11 +86,8 @@ class KotlinGradlePluginMultiVersionIT : BaseMultiGradleVersionIT() {
         File(project.projectDir, "src/main/java/demo/HelloWorld.java").modify { "$it\n" + "class NewClass { }" }
         project.build("build") {
             assertSuccessful()
-            if (expectIncrementalCompilation && expectVerboseIncrementalLogs)
-                assertContains("Incremental compilation")
-            if (expectIncrementalCompilation)
-                assertNotContains("not incremental") else
-                assertContains("not incremental")
+            assertContains("Incremental compilation")
+            assertNotContains("not incremental")
         }
 
         // Then modify a Kotlin source and check that Gradle sees that Java is not up-to-date:
@@ -104,9 +97,7 @@ class KotlinGradlePluginMultiVersionIT : BaseMultiGradleVersionIT() {
         project.build("build") {
             assertSuccessful()
             assertTasksExecuted(":compileKotlin", ":compileJava")
-            if (expectIncrementalCompilation)
-                assertNotContains("not incremental") else
-                assertContains("not incremental")
+            assertNotContains("not incremental")
             assertNotContains("None of the classes needs to be compiled!")
         }
     }
@@ -132,12 +123,7 @@ class KotlinGradlePluginMultiVersionIT : BaseMultiGradleVersionIT() {
 
     @Test
     fun testJavaLibraryCompatibility() {
-        val project = Project("javaLibraryProject", gradleVersion)
-
-        Assume.assumeTrue(
-            "The java-library plugin is supported only in Gradle 3.4+ (current: $gradleVersion)",
-            project.testGradleVersionAtLeast("3.4")
-        )
+        val project = Project("javaLibraryProject")
 
         val compileKotlinTasks = listOf(":libA:compileKotlin", ":libB:compileKotlin", ":app:compileKotlin")
         project.build("build") {
