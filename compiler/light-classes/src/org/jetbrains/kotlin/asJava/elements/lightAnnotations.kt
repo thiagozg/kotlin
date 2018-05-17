@@ -117,8 +117,8 @@ class KtLightAnnotationForSourceEntry(
                         }
                     })
 
-            convertToLightAnnotationMemberValue(this, argument)?.let {
-                return it
+            ktLightAnnotationParameterList.attributes.find { (it as KtLightPsiNameValuePair).valueArgument === valueArgument }?.let {
+                return it.value
             }
         }
 

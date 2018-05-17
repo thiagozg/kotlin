@@ -81,7 +81,7 @@ class KtLightPsiNameValuePair private constructor(
 
     override fun getNameIdentifier(): PsiIdentifier? = LightIdentifier(kotlinOrigin.manager, valueArgument.name)
 
-    override fun getName(): String? = valueArgument.name
+    override fun getName(): String? = valueArgument.getArgumentName()?.asName?.asString()
 
     override fun getValue(): PsiAnnotationMemberValue? =
         valueArgument.getArgumentExpression()?.let { convertToLightAnnotationMemberValue(this, it) }
