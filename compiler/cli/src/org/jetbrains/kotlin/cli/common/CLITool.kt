@@ -17,10 +17,7 @@
 package org.jetbrains.kotlin.cli.common
 
 import org.fusesource.jansi.AnsiConsole
-import org.jetbrains.kotlin.cli.common.arguments.ArgumentParseErrors
-import org.jetbrains.kotlin.cli.common.arguments.CommonToolArguments
-import org.jetbrains.kotlin.cli.common.arguments.parseCommandLineArguments
-import org.jetbrains.kotlin.cli.common.arguments.validateArguments
+import org.jetbrains.kotlin.cli.common.arguments.*
 import org.jetbrains.kotlin.cli.common.messages.*
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.INFO
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity.STRONG_WARNING
@@ -44,7 +41,8 @@ abstract class CLITool<A : CommonToolArguments> {
             args: Array<out String>
     ): ExitCode {
         val arguments = createArguments()
-        parseCommandLineArguments(args.asList(), arguments)
+        val preprocessedArguments = preprocessCommandLineArguments(args.asList(), arguments)
+        parseCommandLineArguments(preprocessedArguments, arguments)
         val collector = PrintingMessageCollector(errStream, messageRenderer, arguments.verbose)
 
         try {
@@ -110,7 +108,8 @@ abstract class CLITool<A : CommonToolArguments> {
 
     // Used in kotlin-maven-plugin (KotlinCompileMojoBase) and in kotlin-gradle-plugin (KotlinJvmOptionsImpl, KotlinJsOptionsImpl)
     fun parseArguments(args: Array<out String>, arguments: A) {
-        parseCommandLineArguments(args.asList(), arguments)
+        val preprocessed = preprocessCommandLineArguments(args.asList(), arguments)
+        parseCommandLineArguments(preprocessed, arguments)
         val message = validateArguments(arguments.errors)
         if (message != null) {
             throw IllegalArgumentException(message)
@@ -130,6 +129,9 @@ abstract class CLITool<A : CommonToolArguments> {
         }
         for ((deprecatedName, newName) in errors.deprecatedArguments) {
             collector.report(STRONG_WARNING, "Argument $deprecatedName is deprecated. Please use $newName instead")
+        }
+        for (argfileError in errors.argfileErrors) {
+            collector.report(STRONG_WARNING, argfileError)
         }
     }
 
