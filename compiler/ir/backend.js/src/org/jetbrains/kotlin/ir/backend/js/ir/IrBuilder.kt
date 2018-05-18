@@ -43,6 +43,10 @@ object JsIrBuilder {
 
     fun buildFunction(symbol: IrSimpleFunctionSymbol) = IrFunctionImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, SYNTHESIZED_DECLARATION, symbol)
 
+    fun buildGetObjectValue(type: KotlinType, classSymbol: IrClassSymbol) =
+        IrGetObjectValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, type, classSymbol)
+    fun buildGetClass(expression: IrExpression, type: KotlinType) = IrGetClassImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, type, expression)
+
     fun buildGetValue(symbol: IrValueSymbol) = IrGetValueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, symbol, SYNTHESIZED_STATEMENT)
     fun buildSetVariable(symbol: IrVariableSymbol, value: IrExpression) =
         IrSetVariableImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, symbol, value, SYNTHESIZED_STATEMENT)
@@ -62,7 +66,8 @@ object JsIrBuilder {
     fun buildFunctionReference(type: KotlinType, symbol: IrFunctionSymbol) =
         IrFunctionReferenceImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, type, symbol, symbol.descriptor)
 
-    fun buildVar(symbol: IrVariableSymbol) = IrVariableImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, SYNTHESIZED_DECLARATION, symbol)
+    fun buildVar(symbol: IrVariableSymbol, initializer: IrExpression? = null) =
+        IrVariableImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, SYNTHESIZED_DECLARATION, symbol).apply { this.initializer = initializer }
 
     fun buildBreak(type: KotlinType, loop: IrLoop) = IrBreakImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, type, loop)
     fun buildContinue(type: KotlinType, loop: IrLoop) = IrContinueImpl(UNDEFINED_OFFSET, UNDEFINED_OFFSET, type, loop)
