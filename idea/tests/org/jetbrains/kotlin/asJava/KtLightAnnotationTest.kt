@@ -21,6 +21,7 @@ import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.command.CommandProcessor
 import com.intellij.openapi.externalSystem.service.project.IdeModifiableModelsProviderImpl
 import com.intellij.psi.*
+import com.intellij.psi.impl.source.resolve.reference.impl.providers.FileReference
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.testFramework.LightProjectDescriptor
 import junit.framework.TestCase
@@ -177,6 +178,34 @@ class KtLightAnnotationTest : KotlinLightCodeInsightFixtureTestCase() {
             open class AnnotatedClass
         """.trimIndent()
         )
+    }
+
+    fun testReferences() {
+        myFixture.addClass(
+            """
+            public @interface StringAnnotation {
+                  String value();
+            }
+        """.trimIndent()
+        )
+
+        myFixture.configureByText(
+            "AnnotatedClass.kt", """
+            @StringAnnotation("someText")
+            open class AnnotatedClass
+        """.trimIndent()
+        )
+        myFixture.testHighlighting("AnnotatedClass.kt")
+
+        val annotations = myFixture.findClass("AnnotatedClass").expectAnnotations(1)
+        val annotationAttributeVal = annotations.first().findAttributeValue("value") as PsiLiteral
+        assertTextAndRange("\"someText\"", annotationAttributeVal)
+        TestCase.assertTrue(
+            "String literal references should be available via light literal",
+            annotationAttributeVal.references.any {
+                /* FileReferences are injected in every string, so we use them as indicator that KtElement references are available there */
+                it is FileReference
+            })
     }
 
     fun testAnnotationsInAnnotationsArrayDeclarations() {

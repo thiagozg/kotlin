@@ -65,6 +65,9 @@ class KtLightPsiLiteral(
         kotlinOrigin.replace(KtPsiFactory(this).createExpression("\"${StringUtil.escapeStringCharacters(value)}\""))
         return this
     }
+
+    override fun getReference(): PsiReference? = references.singleOrNull()
+    override fun getReferences(): Array<out PsiReference> = kotlinOrigin.references
 }
 
 class KtLightPsiNameValuePair private constructor(
