@@ -80,23 +80,23 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
             }
         }
 
-
-    private val facadesForScriptDependencies: SLRUCache<ScriptModuleInfo, ProjectResolutionFacade> =
-        object : SLRUCache<ScriptModuleInfo, ProjectResolutionFacade>(2, 3) {
-            override fun createValue(scriptModuleInfo: ScriptModuleInfo?): ProjectResolutionFacade {
-                val dependenciesInfo = if (scriptModuleInfo != null) {
-                    ScriptDependenciesInfo.ForFile(project, scriptModuleInfo)
-                } else {
-                    ScriptDependenciesInfo.ForProject(project)
+    private val facadesForScriptDependencies = CachedValueProvider {
+        CachedValueProvider.Result(
+            object : SLRUCache<ScriptModuleInfo, ProjectResolutionFacade>(2, 3) {
+                override fun createValue(scriptModuleInfo: ScriptModuleInfo?): ProjectResolutionFacade {
+                    val dependenciesInfo = if (scriptModuleInfo != null) {
+                        ScriptDependenciesInfo.ForFile(project, scriptModuleInfo)
+                    } else {
+                        ScriptDependenciesInfo.ForProject(project)
+                    }
+                    return createFacadeForScriptDependencies(dependenciesInfo)
                 }
-                return createFacadeForScriptDependencies(dependenciesInfo)
-            }
-        }
+            }, LibraryModificationTracker.getInstance(project), ProjectRootModificationTracker.getInstance(project)
+        )
+    }
 
-    private fun getFacadeForScriptDependencies(scriptModuleInfo: ScriptModuleInfo): ProjectResolutionFacade {
-        return synchronized(facadesForScriptDependencies) {
-            facadesForScriptDependencies.get(scriptModuleInfo)
-        }
+    private fun getFacadeForScriptDependencies(scriptModuleInfo: ScriptModuleInfo?): ProjectResolutionFacade {
+        return CachedValuesManager.getManager(project).getCachedValue(project, facadesForScriptDependencies).get(scriptModuleInfo)
     }
 
     private fun createFacadeForScriptDependencies(
@@ -430,8 +430,8 @@ class KotlinCacheServiceImpl(val project: Project) : KotlinCacheService {
         val settings = PlatformAnalysisSettings(platform, moduleInfo.sdk, moduleInfo.supportsAdditionalBuiltInsMembers())
         val projectFacade = when (moduleInfo) {
             is ScriptDependenciesInfo.ForProject,
-            is ScriptDependenciesSourceInfo.ForProject -> facadesForScriptDependencies[null]
-            is ScriptDependenciesInfo.ForFile -> facadesForScriptDependencies[moduleInfo.scriptModuleInfo]
+            is ScriptDependenciesSourceInfo.ForProject -> getFacadeForScriptDependencies(null)
+            is ScriptDependenciesInfo.ForFile -> getFacadeForScriptDependencies(moduleInfo.scriptModuleInfo)
             else -> globalFacade(settings)
         }
         return ModuleResolutionFacadeImpl(projectFacade, moduleInfo)
