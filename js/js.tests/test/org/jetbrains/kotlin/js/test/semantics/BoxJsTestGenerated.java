@@ -2061,6 +2061,11 @@ public class BoxJsTestGenerated extends AbstractBoxJsTest {
                 runTest("js/js.translator/testData/box/expression/evaluationOrder/compareToIntrinsicWithSideEffect.kt");
             }
 
+            @TestMetadata("concatWithTerminator.kt")
+            public void testConcatWithTerminator() throws Exception {
+                runTest("js/js.translator/testData/box/expression/evaluationOrder/concatWithTerminator.kt");
+            }
+
             @TestMetadata("dangerousInline.kt")
             public void testDangerousInline() throws Exception {
                 runTest("js/js.translator/testData/box/expression/evaluationOrder/dangerousInline.kt");
@@ -2069,6 +2074,11 @@ public class BoxJsTestGenerated extends AbstractBoxJsTest {
             @TestMetadata("dangerousInsideDangerous.kt")
             public void testDangerousInsideDangerous() throws Exception {
                 runTest("js/js.translator/testData/box/expression/evaluationOrder/dangerousInsideDangerous.kt");
+            }
+
+            @TestMetadata("deepExpression.kt")
+            public void testDeepExpression() throws Exception {
+                runTest("js/js.translator/testData/box/expression/evaluationOrder/deepExpression.kt");
             }
 
             @TestMetadata("elvisComplex.kt")
