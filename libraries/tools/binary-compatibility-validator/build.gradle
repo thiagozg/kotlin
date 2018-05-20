@@ -39,7 +39,6 @@ compileTestKotlin {
 }
 
 test {
-    dependsOn cleanCompileTestKotlin
     dependsOn configurations.testArtifacts
 
     systemProperty 'overwrite.output', System.getProperty("overwrite.output", "false")
