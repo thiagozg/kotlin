@@ -5,7 +5,16 @@
 
 package org.jetbrains.kotlin.tools
 
-class ClassVisibility(val name: String, val visibility: String?, val members: Map<MemberSignature, MemberVisibility>, val isCompanion: Boolean = false, val facadeClassName: String? = null) {
+import kotlinx.metadata.Flag
+import kotlinx.metadata.Flags
+
+class ClassVisibility(
+    val name: String,
+    val visibility: Flags?,
+    val members: Map<MemberSignature, MemberVisibility>,
+    val facadeClassName: String? = null
+) {
+    val isCompanion: Boolean get() = visibility != null && Flag.Class.IS_COMPANION_OBJECT(visibility)
     var companionVisibilities: ClassVisibility? = null
     val partVisibilities = mutableListOf<ClassVisibility>()
 }
@@ -14,10 +23,15 @@ fun ClassVisibility.findMember(signature: MemberSignature): MemberVisibility? =
     members[signature] ?: partVisibilities.mapNotNull { it.members[signature] }.firstOrNull()
 
 
-data class MemberVisibility(val member: MemberSignature, val declaration: String?, val visibility: String?)
+data class MemberVisibility(val member: MemberSignature, val visibility: Flags?)
 data class MemberSignature(val name: String, val desc: String)
 
-private fun isPublic(visibility: String?, isPublishedApi: Boolean) = visibility == null || visibility == "public" || visibility == "protected"  || (isPublishedApi && visibility == "internal")
+private fun isPublic(visibility: Flags?, isPublishedApi: Boolean) =
+    visibility == null
+            || Flag.IS_PUBLIC(visibility)
+            || Flag.IS_PROTECTED(visibility)
+            || (isPublishedApi && Flag.IS_INTERNAL(visibility))
+
 fun ClassVisibility.isPublic(isPublishedApi: Boolean) = isPublic(visibility, isPublishedApi)
 fun MemberVisibility.isPublic(isPublishedApi: Boolean) = isPublic(visibility, isPublishedApi)
 
