@@ -56,10 +56,10 @@ compileKotlinCommon {
 
 compileUnsignedKotlinCommon {
     kotlinOptions {
-        languageVersion = "1.3"
-        apiVersion = "1.3"
+//        languageVersion = "1.3"
+//        apiVersion = "1.3"
         freeCompilerArgs = [
-                "-Xallow-kotlin-package"
+                "-Xallow-kotlin-package", "-XXLanguage:+InlineClasses"
         ]
     }
 }

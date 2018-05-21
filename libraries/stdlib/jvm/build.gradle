@@ -213,11 +213,11 @@ compileCoroutinesKotlin {
 
 compileUnsignedKotlin {
     kotlinOptions {
-        languageVersion = "1.3"
-        apiVersion = "1.3"
-//        freeCompilerArgs = [
-//                "-Xallow-kotlin-package"
-//        ]
+//        languageVersion = "1.3"
+//        apiVersion = "1.3"
+        freeCompilerArgs += [
+            "-XXLanguage:+InlineClasses"
+        ]
     }
 }
 
