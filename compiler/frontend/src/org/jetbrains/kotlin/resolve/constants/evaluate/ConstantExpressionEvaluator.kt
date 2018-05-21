@@ -759,18 +759,49 @@ private class ConstantExpressionEvaluatorVisitor(
 
         // Ann()
         if (resultingDescriptor is ConstructorDescriptor) {
-            val classDescriptor: ClassDescriptor = resultingDescriptor.constructedClass
-            if (DescriptorUtils.isAnnotationClass(classDescriptor)) {
-                val descriptor = AnnotationDescriptorImpl(
-                    classDescriptor.defaultType,
-                    constantExpressionEvaluator.resolveAnnotationArguments(call, trace),
-                    SourceElement.NO_SOURCE
-                )
-                return AnnotationValue(descriptor).wrap()
+            val classDescriptor = resultingDescriptor.constructedClass
+            return when {
+                DescriptorUtils.isAnnotationClass(classDescriptor) -> {
+                    val descriptor = AnnotationDescriptorImpl(
+                        classDescriptor.defaultType,
+                        constantExpressionEvaluator.resolveAnnotationArguments(call, trace),
+                        SourceElement.NO_SOURCE
+                    )
+                    AnnotationValue(descriptor).wrap()
+                }
+
+                classDescriptor.isInlineClass() ->
+                    createConstantValueForUnsignedTypeConstructor(call, resultingDescriptor, classDescriptor)
+
+                else -> null
             }
         }
 
         return null
+    }
+
+    private fun createConstantValueForUnsignedTypeConstructor(
+        call: ResolvedCall<*>,
+        constructorDescriptor: ConstructorDescriptor,
+        classDescriptor: ClassDescriptor
+    ): TypedCompileTimeConstant<*>? {
+        assert(classDescriptor.isInlineClass()) { "Unsigned type should be an inline class type, but it is: $classDescriptor" }
+
+        if (!constructorDescriptor.isPrimary) return null
+
+        val valueArguments = call.valueArguments
+        if (valueArguments.size > 1) return null
+
+        val underlyingType = classDescriptor.underlyingRepresentation()?.type ?: return null
+
+        val argument = valueArguments.values.single().arguments.single()
+        val argumentExpression = argument.getArgumentExpression() ?: return null
+
+        val compileTimeConstant = evaluate(argumentExpression, underlyingType)
+        val evaluatedArgument = compileTimeConstant?.toConstantValue(underlyingType) ?: return null
+
+        val unsignedValue = ConstantValueFactory.createUnsignedValue(evaluatedArgument, classDescriptor.defaultType) ?: return null
+        return unsignedValue.wrap(compileTimeConstant.parameters)
     }
 
     private fun createConstantValueForArrayFunctionCall(
