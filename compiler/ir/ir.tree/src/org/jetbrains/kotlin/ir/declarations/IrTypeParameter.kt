@@ -33,9 +33,7 @@ interface IrTypeParameter : IrSymbolDeclaration<IrTypeParameterSymbol> {
     val name: Name
     val variance: Variance
     val index: Int
-    val upperBounds: List<IrType>
-
-    val superClassifiers: MutableList<IrClassifierSymbol>
+    val superTypes: List<IrType>
 
     override fun <D> transform(transformer: IrElementTransformer<D>, data: D): IrTypeParameter
 }
