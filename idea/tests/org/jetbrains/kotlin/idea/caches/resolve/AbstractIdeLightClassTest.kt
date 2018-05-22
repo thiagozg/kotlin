@@ -277,7 +277,9 @@ object LightClassLazinessChecker {
                     )
                 if (lightAnnotation is KtLightAbstractAnnotation) {
                     assertEquals(clsAnnotation.values(), lightAnnotation.values())
-//                    assertEquals(clsAnnotation, lightAnnotation.clsDelegate)
+                    withAllowedAnnotationsClsDelegate {
+                        assertEquals(clsAnnotation, lightAnnotation.clsDelegate)
+                    }
                 }
             }
         }

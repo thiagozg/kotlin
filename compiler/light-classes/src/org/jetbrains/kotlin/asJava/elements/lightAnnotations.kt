@@ -22,6 +22,7 @@ import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.annotations.NotNull
 import org.jetbrains.annotations.Nullable
+import org.jetbrains.annotations.TestOnly
 import org.jetbrains.kotlin.asJava.LightClassGenerationSupport
 import org.jetbrains.kotlin.asJava.classes.cannotModify
 import org.jetbrains.kotlin.asJava.classes.lazyPub
@@ -58,7 +59,7 @@ abstract class KtLightAbstractAnnotation(parent: PsiElement, computeDelegate: ()
 
     override val clsDelegate: PsiAnnotation
         get() {
-            if (ApplicationManager.getApplication().isUnitTestMode && this !is KtLightNonSourceAnnotation)
+            if (!accessAnnotationsClsDelegateIsAllowed && ApplicationManager.getApplication().isUnitTestMode && this !is KtLightNonSourceAnnotation)
                 LOG.error("KtLightAbstractAnnotation clsDelegate requested for ${this.javaClass}")
             return _clsDelegate
         }
@@ -308,7 +309,7 @@ class KtLightNullabilityAnnotation(val member: KtLightElement<*, PsiModifierList
 }
 
 private fun getClsNullabilityAnnotation(member: KtLightElement<*, PsiModifierListOwner>): PsiAnnotation? {
-    if (ApplicationManager.getApplication().isUnitTestMode && member.kotlinOrigin != null)
+    if (!accessAnnotationsClsDelegateIsAllowed && ApplicationManager.getApplication().isUnitTestMode && member.kotlinOrigin != null)
         LOG.error("nullability should be retrieved from `kotlinOrigin`")
     return member.clsDelegate.modifierList?.annotations?.findLast {
         isNullabilityAnnotation(it.qualifiedName)
@@ -389,4 +390,18 @@ private fun getAnnotationName(callee: KtExpression): String? {
         if (psiClass?.isAnnotationType == true) return psiClass.qualifiedName
     }
     return null
+}
+
+@TestOnly
+var accessAnnotationsClsDelegateIsAllowed = false
+
+@TestOnly
+fun <T> withAllowedAnnotationsClsDelegate(body: () -> T): T {
+    val prev = accessAnnotationsClsDelegateIsAllowed
+    try {
+        accessAnnotationsClsDelegateIsAllowed = true
+        return body()
+    } finally {
+        accessAnnotationsClsDelegateIsAllowed = prev
+    }
 }
