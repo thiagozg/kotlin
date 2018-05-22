@@ -1,3 +1,0 @@
-create new service
-edit new service
-delete new service

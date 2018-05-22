@@ -11,4 +11,8 @@ abstract class AbstractMultiplatformJpsTest : AbstractIncrementalJpsTest() {
     override fun prepareModuleSources(module: DependenciesTxt.Module?) {
         prepareIndexedModuleSources(module!!)
     }
+
+    override fun doTest(testDataPath: String) {
+        super.doTest(testDataPath)
+    }
 }
