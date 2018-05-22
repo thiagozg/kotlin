@@ -18,8 +18,15 @@ private const val ERROR_MSG_PREFIX = "Unable to construct script definition: "
 
 open class ScriptDefinitionFromAnnotatedBaseClass(val environment: ScriptingEnvironment) : ScriptDefinition {
 
-    private val baseClass: KClass<*> = environment.getOrNull(ScriptingEnvironmentProperties.baseClass)
-            ?: throw IllegalArgumentException("${ERROR_MSG_PREFIX}Expecting baseClass parameter in the scripting environment")
+    private val baseClass: KClass<*> = run {
+        val baseClassName = environment.getOrNull(ScriptingEnvironmentProperties.baseClass)?.typeName
+                ?: throw IllegalArgumentException("${ERROR_MSG_PREFIX}Expecting baseClass parameter in the scripting environment")
+        try {
+            ScriptDefinitionFromAnnotatedBaseClass::class.java.classLoader.loadClass(baseClassName).kotlin
+        } catch (e: Throwable) {
+            throw IllegalArgumentException("${ERROR_MSG_PREFIX}Unable to load base class $baseClassName", e)
+        }
+    }
 
     private val mainAnnotation = baseClass.findAnnotation<KotlinScript>()
             ?: throw IllegalArgumentException("${ERROR_MSG_PREFIX}Expecting KotlinScript annotation on the $baseClass")

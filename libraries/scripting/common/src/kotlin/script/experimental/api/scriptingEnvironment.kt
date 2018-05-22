@@ -5,7 +5,6 @@
 
 package kotlin.script.experimental.api
 
-import kotlin.reflect.KClass
 import kotlin.script.experimental.util.ChainedPropertyBag
 import kotlin.script.experimental.util.typedKey
 
@@ -14,6 +13,6 @@ typealias ScriptingEnvironment = ChainedPropertyBag
 object ScriptingEnvironmentProperties {
 
     // required by definitions that extract data from script base class annotations
-    val baseClass by typedKey<KClass<*>>()
+    val baseClass by typedKey<KotlinType>()
 }
 

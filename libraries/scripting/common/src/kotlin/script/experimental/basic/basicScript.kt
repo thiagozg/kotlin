@@ -17,8 +17,9 @@ private const val ILLEGAL_CONFIG_ANN_ARG =
 open class AnnotationsBasedCompilationConfigurator(val environment: ScriptingEnvironment) : ScriptCompilationConfigurator {
 
     override val defaultConfiguration = run {
-        val base = environment[ScriptingEnvironmentProperties.baseClass]
-        val cfg = base.annotations.filterIsInstance(KotlinScriptDefaultCompilationConfiguration::class.java).flatMap { ann ->
+        val base = environment[ScriptingEnvironmentProperties.baseClass].typeName
+        val baseClass = AnnotationsBasedCompilationConfigurator::class.java.classLoader.loadClass(base)
+        val cfg = baseClass.annotations.filterIsInstance(KotlinScriptDefaultCompilationConfiguration::class.java).flatMap { ann ->
             val params = try {
                 ann.compilationConfiguration.objectInstance ?: ann.compilationConfiguration.createInstance()
             } catch (e: Throwable) {

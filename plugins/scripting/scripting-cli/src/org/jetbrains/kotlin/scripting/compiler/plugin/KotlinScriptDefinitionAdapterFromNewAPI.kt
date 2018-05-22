@@ -10,9 +10,10 @@ import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.name.NameUtils
 import org.jetbrains.kotlin.psi.KtScript
-import org.jetbrains.kotlin.script.*
+import org.jetbrains.kotlin.script.KotlinScriptDefinition
 import kotlin.reflect.KClass
 import kotlin.reflect.KType
+import kotlin.reflect.full.starProjectedType
 import kotlin.script.experimental.api.ScriptCompileConfigurationProperties
 import kotlin.script.experimental.api.ScriptDefinition
 import kotlin.script.experimental.api.ScriptDefinitionProperties
@@ -29,7 +30,10 @@ abstract class KotlinScriptDefinitionAdapterFromNewAPIBase : KotlinScriptDefinit
     protected abstract val scriptFileExtensionWithDot: String
 
     open val baseClass: KClass<*>
-        get() = scriptDefinition.compilationConfigurator.defaultConfiguration[ScriptingEnvironmentProperties.baseClass]
+        get() {
+            val baseClassName = scriptDefinition.compilationConfigurator.defaultConfiguration[ScriptingEnvironmentProperties.baseClass].typeName
+            return this::class.java.classLoader.loadClass(baseClassName).kotlin
+        }
 
     override val template: KClass<*> get() = baseClass
 
@@ -54,17 +58,25 @@ abstract class KotlinScriptDefinitionAdapterFromNewAPIBase : KotlinScriptDefinit
     }
 
     override val acceptedAnnotations: List<KClass<out Annotation>> by lazy {
-        scriptDefinition.compilationConfigurator.defaultConfiguration.getOrNull(ScriptCompileConfigurationProperties.refineConfigurationOnAnnotations)
-                ?: emptyList()
+        val cl = this::class.java.classLoader
+        val annNames =
+            scriptDefinition.compilationConfigurator.defaultConfiguration.getOrNull(ScriptCompileConfigurationProperties.refineConfigurationOnAnnotations)
+                    ?: emptyList()
+        annNames.map { (cl.loadClass(it.typeName) as Class<out Annotation>).kotlin }
     }
 
     override val implicitReceivers: List<KType> by lazy {
-        scriptDefinition.compilationConfigurator.defaultConfiguration.getOrNull(ScriptCompileConfigurationProperties.scriptImplicitReceivers)
-                ?: emptyList()
+        val cl = this::class.java.classLoader
+        val rcNames =
+            scriptDefinition.compilationConfigurator.defaultConfiguration.getOrNull(ScriptCompileConfigurationProperties.scriptImplicitReceivers)
+                    ?: emptyList()
+        rcNames.map { cl.loadClass(it).kotlin.starProjectedType }
     }
 
     override val environmentVariables: List<Pair<String, KType>> by lazy {
-        scriptDefinition.compilationConfigurator.defaultConfiguration.getOrNull(ScriptCompileConfigurationProperties.contextVariables)?.map { (k, v) -> k to v }
+        val cl = this::class.java.classLoader
+        scriptDefinition.compilationConfigurator.defaultConfiguration.getOrNull(ScriptCompileConfigurationProperties.contextVariables)
+            ?.map { (k, v) -> k to cl.loadClass(v.typeName).kotlin.starProjectedType }
                 ?: emptyList()
     }
 

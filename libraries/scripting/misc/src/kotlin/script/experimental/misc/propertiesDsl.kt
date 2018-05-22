@@ -6,12 +6,17 @@
 package kotlin.script.experimental.misc
 
 import kotlin.reflect.KClass
+import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.util.TypedKey
 
 
 inline operator fun <reified T> TypedKey<T>.invoke(v: T): Pair<TypedKey<T>, T> = this to v
 
-inline operator fun <reified K> TypedKey<KClass<*>>.invoke(): Pair<TypedKey<KClass<*>>, KClass<*>> = this to K::class
+inline operator fun <reified K> TypedKey<KotlinType>.invoke(): Pair<TypedKey<KotlinType>, KotlinType> =
+    this to KotlinType(K::class.qualifiedName!!)
+
+operator fun TypedKey<List<KotlinType>>.invoke(vararg vs: KClass<*>): Pair<TypedKey<List<KotlinType>>, List<KotlinType>> =
+    this to vs.map { KotlinType(it.qualifiedName!!) }
 
 inline operator fun <reified E> TypedKey<List<E>>.invoke(vararg vs: E): Pair<TypedKey<List<E>>, List<E>> = this to vs.toList()
 
