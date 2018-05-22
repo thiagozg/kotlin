@@ -25,10 +25,13 @@ import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.constants.ConstantValue
 import org.jetbrains.kotlin.resolve.constants.ErrorValue
 
+@JvmField
 val JVM_STATIC_ANNOTATION_FQ_NAME = FqName("kotlin.jvm.JvmStatic")
 
+@JvmField
 val JVM_FIELD_ANNOTATION_FQ_NAME = FqName("kotlin.jvm.JvmField")
 
+@JvmField
 val JVM_DEFAULT_FQ_NAME = FqName("kotlin.jvm.JvmDefault")
 
 fun CallableMemberDescriptor.hasJvmDefaultAnnotation() =
