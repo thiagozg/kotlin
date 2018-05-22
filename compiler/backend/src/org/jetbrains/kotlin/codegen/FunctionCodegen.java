@@ -41,6 +41,7 @@ import org.jetbrains.kotlin.resolve.BindingContext;
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils;
 import org.jetbrains.kotlin.resolve.DescriptorUtils;
 import org.jetbrains.kotlin.resolve.InlineClassesUtilsKt;
+import org.jetbrains.kotlin.resolve.annotations.AnnotationUtilKt;
 import org.jetbrains.kotlin.resolve.calls.util.UnderscoreUtilKt;
 import org.jetbrains.kotlin.resolve.constants.ArrayValue;
 import org.jetbrains.kotlin.resolve.constants.ConstantValue;
@@ -69,6 +70,7 @@ import java.util.*;
 
 import static org.jetbrains.kotlin.builtins.KotlinBuiltIns.isNullableAny;
 import static org.jetbrains.kotlin.codegen.AsmUtil.*;
+import static org.jetbrains.kotlin.codegen.ClassBuilderMode.LIGHT_CLASSES;
 import static org.jetbrains.kotlin.codegen.serialization.JvmSerializationBindings.METHOD_FOR_FUNCTION;
 import static org.jetbrains.kotlin.descriptors.CallableMemberDescriptor.Kind.DECLARATION;
 import static org.jetbrains.kotlin.descriptors.ModalityKt.isOverridable;
@@ -438,7 +440,7 @@ public class FunctionCodegen {
             Method asmMethod,
             MethodVisitor mv
     ) {
-        generateMethodAnnotations(functionDescriptor, asmMethod, mv, memberCodegen, typeMapper);
+        generateMethodAnnotations(functionDescriptor, asmMethod, mv, memberCodegen, state);
     }
 
     public static void generateMethodAnnotations(
@@ -446,13 +448,21 @@ public class FunctionCodegen {
             Method asmMethod,
             MethodVisitor mv,
             @NotNull InnerClassConsumer consumer,
-            @NotNull KotlinTypeMapper typeMapper
+            @NotNull GenerationState state
     ) {
-        AnnotationCodegen annotationCodegen = AnnotationCodegen.forMethod(mv, consumer, typeMapper);
+        AnnotationCodegen annotationCodegen = AnnotationCodegen.forMethod(mv, consumer, state.getTypeMapper());
 
         if (functionDescriptor instanceof PropertyAccessorDescriptor) {
             AnnotationUseSiteTarget target = functionDescriptor instanceof PropertySetterDescriptor ? PROPERTY_SETTER : PROPERTY_GETTER;
             annotationCodegen.genAnnotations(functionDescriptor, asmMethod.getReturnType(), target);
+            if (state.getClassBuilderMode() == LIGHT_CLASSES) {
+                AnnotationDescriptor jvmDefault =
+                        ((PropertyAccessorDescriptor) functionDescriptor).getCorrespondingProperty().getAnnotations()
+                                .findAnnotation(AnnotationUtilKt.JVM_DEFAULT_FQ_NAME);
+                if (jvmDefault != null) {
+                    annotationCodegen.genJmvDefaultAnnotationOnAccessorInLightClassMode(jvmDefault);
+                }
+            }
         }
         else {
             annotationCodegen.genAnnotations(functionDescriptor, asmMethod.getReturnType());
@@ -532,7 +542,7 @@ public class FunctionCodegen {
 
     private static void markEnumOrInnerConstructorParameterAsSynthetic(MethodVisitor mv, int i, ClassBuilderMode mode) {
         // IDEA's ClsPsi builder fails to annotate synthetic parameters
-        if (mode == ClassBuilderMode.LIGHT_CLASSES) return;
+        if (mode == LIGHT_CLASSES) return;
 
         // This is needed to avoid RuntimeInvisibleParameterAnnotations error in javac:
         // see MethodWriter.visitParameterAnnotation()

@@ -291,6 +291,10 @@ public abstract class AnnotationCodegen {
         visitor.visitEnd();
     }
 
+    public String genJmvDefaultAnnotationOnAccessorInLightClassMode(@NotNull AnnotationDescriptor annotationDescriptor) {
+        return genAnnotation(annotationDescriptor);
+    }
+
     @Nullable
     private String genAnnotation(@NotNull AnnotationDescriptor annotationDescriptor) {
         ClassDescriptor classDescriptor = getAnnotationClass(annotationDescriptor);
